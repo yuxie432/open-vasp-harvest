@@ -18,11 +18,17 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
 `report.json` + `report.md` (~80 kB, every table per source) are kept out of git in
 `stats_csd3/`, and all numbers below come from them.
 
+**Terms.** The *long tail* is the data that individual research groups published: many small
+deposits, as opposed to a few large institutional databases. Here it is Zenodo + Materials Cloud +
+NOMAD's individual uploads, written NOMAD[individual] (the generated report calls this subset
+`nomad[long-tail]`). The *large training sets* are MPtrj, OMat24 and sAlex, which are built from
+the Materials Project and Alexandria.
+
 ---
 
 ## 1. Key findings
 
-1. **Most of the NOMAD harvest is the Alexandria database, not the long tail.** 6,203,632 of
+1. **Most of the NOMAD harvest is the Alexandria database, not individual uploads.** 6,203,632 of
    NOMAD's 7,073,592 calcs (88%) and 42,371,188 of its 52,459,065 frames (81%) are institutional
    high-throughput runs of the Alexandria group (M. A. L. Marques, S. Botti). They were uploaded to
    NOMAD as ordinary "direct uploads", with no `external_db` tag, so the harvest's filter could not
@@ -39,7 +45,7 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
    by author name. Zenodo and Materials Cloud contain none. All statistics below are for
    **individual uploads only** (`--individual-only`, the default): `scan` and `report` skip these
    calcs, and `meta` still describes them (§1.1).
-2. **The genuine long tail** is Zenodo + Materials Cloud + NOMAD[long-tail]:
+2. **The long tail** is Zenodo + Materials Cloud + NOMAD[individual]:
    * **2,707 deposits, 1,332,136 calcs, 30,877,236 frames and 3.41 billion atom-level force
      labels**, at 110 atoms per frame on average. MPtrj has 49.3M force labels at 31 atoms per frame.
    * 713–787 distinct first authors: 787 by exact name, 713 once name variants such as
@@ -50,7 +56,7 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
      1 meV/atom).
    * The rule collapses equilibrium MD, which is half of Zenodo's frames, so 2.67M is a lower bound
      (§4.4).
-3. **It is a different kind of data from the megasets.**
+3. **It is a different kind of data from the large training sets.**
    * **Structures**: by frames, 35% are bulk, 52% slab / 2D and 12% molecule / cluster
      (vacuum-gap classification; bulk stays at 34.7–35.8% for 4.5–8 Å thresholds). Every reference
      set is ≥ 97.7% bulk. The median frame has 39–131 atoms, depending on the source, against
@@ -64,11 +70,11 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
    * **Forces**: Zenodo and Materials Cloud frames are far from equilibrium (median max |F|
      2.2–2.3 eV/Å, 61–78% of frames above 1 eV/Å). That resembles OMat24's rattled / AIMD frames
      (2.38 eV/Å), but here the frames come from real MD of surfaces and interfaces.
-     NOMAD[long-tail] is relaxation-like: 0.24 eV/Å, against MPtrj's 0.20.
+     NOMAD[individual] is relaxation-like: 0.24 eV/Å, against MPtrj's 0.20.
 
    OMat24's own paper lists "point defects, surfaces, non-stoichiometry and lower dimensional
    structures" as absent; most of the long tail sits exactly there.
-4. **A measurable share of its chemistry is absent from all the megasets.** MP ∪ Alexandria is the
+4. **A measurable share of its chemistry is absent from all the large training sets.** MP ∪ Alexandria is the
    superset of MPtrj, of sAlex and of OMat24's seed structures.
    * Against MP ∪ Alexandria, 26,771 of the long tail's 55,189 chemical systems are absent. They
      hold 9.7% of calcs, 12.9% of frames and 7.2% of effective frames, and occur in 434 of the
@@ -84,7 +90,7 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
      compositions inflate them (§5.4).
 5. **It is heterogeneous, so it must be bucketed.**
    * There are 106 / 40 / 65 consistency buckets (XC label × POTCAR release family) in Zenodo /
-     Materials Cloud / NOMAD[long-tail]; the largest is plain PBE.
+     Materials Cloud / NOMAD[individual]; the largest is plain PBE.
    * 5.49M long-tail frames (17.8%, from 1,330 deposits) follow the Materials Project GGA(+U) recipe
      exactly: MP's POTCAR symbols in the PBE release, MP's U values, and no vdW / meta-GGA / hybrid.
      They therefore share MPtrj's energy reference and can be co-trained with it. 1.68M of them
@@ -113,12 +119,12 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
    * In Zenodo, one deposit (concept record `5720008`, RPBE AIMD of water on transition-metal
      surfaces) holds 30.5% of frames. The effective number of first authors by frames (1/HHI) is 8.8.
    * In Materials Cloud, one record holds 65.6% of frames.
-   * In NOMAD[long-tail], the top author holds 29.6% of frames (1/HHI 8.3).
-   * By calcs, Zenodo is far more even (1/HHI 22 deposits / 21 first authors). NOMAD[long-tail] is
+   * In NOMAD[individual], the top author holds 29.6% of frames (1/HHI 8.3).
+   * By calcs, Zenodo is far more even (1/HHI 22 deposits / 21 first authors). NOMAD[individual] is
      not (1/HHI 5.1 first authors): TU Darmstadt's 350k high-throughput statics alone are 40% of its
      calcs.
    * Per-trajectory subsampling and per-deposit weighting are prerequisites for training.
-9. **The long tail is growing.**
+9. **More groups publish raw VASP data every year.**
    * Distinct first authors publishing raw VASP data, per year: 50 (2020), 71, 85, 110, 128,
      201 (2025), and 229 in 2026 up to the harvest in September. 177 of those 2026 first authors
      are new.
@@ -154,8 +160,8 @@ uploads only**; the Alexandria group's runs inside NOMAD are excluded (§1.1). T
   is public (CC-BY-4.0) and is the parent of sAlex and OMat24's seeds, so delivering it adds
   nothing new. If wanted, it can ship as a clearly separated optional bucket; `origin` selects it.
   A related judgement call remains within the long tail: some individual uploads are themselves a
-  lab's high-throughput screening (e.g. TU Darmstadt's 350k PBE statics, 40% of NOMAD[long-tail]
-  calcs). They are not in any megaset, but they are homogeneous, so treat them as their own bucket
+  lab's high-throughput screening (e.g. TU Darmstadt's 350k PBE statics, 40% of NOMAD[individual]
+  calcs). They are in none of the large training sets, but they are homogeneous, so treat them as their own bucket
   or cap their weight.
 
 ---
@@ -220,7 +226,7 @@ Definitions used throughout:
 
 ### 3.1 Size and concentration
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | NOMAD [Alexandria group] | NOMAD (all) |
+| | Zenodo | Materials Cloud | NOMAD [individual] | NOMAD [Alexandria group] | NOMAD (all) |
 |---|---:|---:|---:|---:|---:|
 | deposits | 629 | 102 | 1,976 | 1,719 | 3,695 |
 | first authors (exact name) | 494 | 78 | 222 | 2 | 223 |
@@ -236,11 +242,11 @@ Definitions used throughout:
 
 Merging name variants ("Surname, Given" vs "Given Surname", middle initials, affiliation text in
 the name field) lowers the first-author counts to 455–468 for Zenodo, 77–78 for Materials Cloud
-and 219–222 for NOMAD[long-tail].
+and 219–222 for NOMAD[individual].
 
 ### 3.2 Calculation types (share of frames; calcs in brackets)
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | NOMAD [Alexandria] |
+| | Zenodo | Materials Cloud | NOMAD [individual] | NOMAD [Alexandria] |
 |---|---:|---:|---:|---:|
 | MD | 51.1% (2,654) | 65.6% (422) | 7.6% (545) | — |
 | relaxation (ions) | 37.1% (89,664) | 28.4% (17,222) | 55.8% (160,788) | — |
@@ -257,7 +263,7 @@ temperatures are unknown.
 
 ### 3.3 Exchange-correlation and settings (share of frames)
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | NOMAD [Alexandria] |
+| | Zenodo | Materials Cloud | NOMAD [individual] | NOMAD [Alexandria] |
 |---|---:|---:|---:|---:|
 | PBE | 47.6% | 27.1% | 90.8% | 75.9% |
 | RPBE | 32.7% | 69.7% | 0.2% | — |
@@ -280,7 +286,7 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
 
 ### 3.4 Quality, label consistency, electronic properties
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | NOMAD [Alexandria] |
+| | Zenodo | Materials Cloud | NOMAD [individual] | NOMAD [Alexandria] |
 |---|---:|---:|---:|---:|
 | SCF-unconverged frames (tagged) | 51,563 (0.28%) | 3,701 (0.15%) | 139,999 (1.39%) | 402,136 (0.95%) |
 | relaxations not ionically converged | 12,310 of 125,327 | 514 of 23,973 | 5,965 of 265,138 | 12,787 of 3,820,753 |
@@ -293,7 +299,7 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
 
 ### 3.5 Chemistry (from the structures in the shards)
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | long tail (union) |
+| | Zenodo | Materials Cloud | NOMAD [individual] | long tail (all three) |
 |---|---:|---:|---:|---:|
 | elements | 88 | 96 | 95 | 96 |
 | chemical systems | 4,147 | 22,864 | 31,339 | 55,189 |
@@ -338,7 +344,7 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
 
 ### 4.1 Structure types (share of frames; calcs in brackets)
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | long tail | references (MPtrj, OMat24 val, sAlex val, MP, Alexandria) |
+| | Zenodo | Materials Cloud | NOMAD [individual] | long tail | references (MPtrj, OMat24 val, sAlex val, MP, Alexandria) |
 |---|---:|---:|---:|---:|---:|
 | bulk (no vacuum) | 35.0% (67.4%) | 5.4% (69.7%) | 42.3% (80.7%) | 35.0% (76.2%) | 97.7–100% |
 | slab / 2D | 63.4% (22.5%) | 93.9% (23.4%) | 22.1% (4.1%) | 52.4% (10.5%) | 0.0–2.1% |
@@ -349,7 +355,7 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
 
 * **Slab-heavy sources.** Zenodo and Materials Cloud are slab-dominated by frames: surface /
   interface MD and adsorbate relaxations, with a median vacuum width of 15 Å.
-* **NOMAD[long-tail]'s molecules.** Its 35% molecule / cluster frames are clusters and molecules
+* **Molecules in NOMAD[individual].** Its 35% molecule / cluster frames are clusters and molecules
   in boxes; 63k of its calcs have no neighbour within 3 Å, i.e. isolated atoms or very sparse cells.
 * **Why Zenodo's bulk is mostly P1.** The bulk P1 share is high in Zenodo and Materials Cloud
   because they hold MD snapshots, defect supercells and amorphous cells. These are real
@@ -360,7 +366,7 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
 
 ### 4.2 Labels: forces, stress, energies
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | long tail | MPtrj | OMat24 val | sAlex val |
+| | Zenodo | Materials Cloud | NOMAD [individual] | long tail | MPtrj | OMat24 val | sAlex val |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | median max \|F\| (eV/Å) | 2.16 | 2.29 | 0.243 | ≈ 1.0 | 0.203 | 2.38 | 0.030 |
 | p95 max \|F\| (eV/Å) | 7.04 | 4.56 | 4.2 | 6.2 | 2.36 | 18.5 | 1.68 |
@@ -388,11 +394,11 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
   * Share of frames above 0.5 eV/atom: 15.5% in the long tail, against 4.5% in MPtrj and 33% in
     OMat24.
   * These high-energy frames are mostly slabs and clusters, which carry surface energy, and
-    off-equilibrium MD — the regime the megasets sample only by rattling.
+    off-equilibrium MD — the regime the large training sets reach only by rattling.
 
 ### 4.3 Label quality and default training-time filters (frames removed; filters overlap)
 
-| filter | Zenodo | Materials Cloud | NOMAD [long-tail] | long tail |
+| filter | Zenodo | Materials Cloud | NOMAD [individual] | long tail |
 |---|---:|---:|---:|---:|
 | NEB image (projected VTST force) | 568,555 | 5,505 | 174,853 | 748,913 |
 | SCF unconverged | 51,498 | 3,701 | 139,999 | 195,198 |
@@ -420,7 +426,7 @@ set); LDA / PW91 / ultrasoft potentials are < 3%. Every calc carries its titels 
 
 ### 4.4 Redundancy and effective size
 
-| | Zenodo | Materials Cloud | NOMAD [long-tail] | long tail | MPtrj | OMat24 val | sAlex val |
+| | Zenodo | Materials Cloud | NOMAD [individual] | long tail | MPtrj | OMat24 val | sAlex val |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | frames | 18,243,690 | 2,545,669 | 10,087,877 | 30,877,236 | 1,580,395 | 1,025,361 | 553,218 |
 | unique structures | 17,009,658 | 2,493,561 | 8,605,412 | 28.0M | 1,556,698 | 1,025,315 | 547,517 |
@@ -478,7 +484,7 @@ The long tail has several things none of these sets has:
   studies, mostly on surfaces, interfaces and molecules.
 * **A growing source**: 229 first authors published in 2026 alone.
 
-The megasets are internally consistent but single-recipe and almost entirely bulk; the long tail is
+The large training sets are internally consistent but single-recipe and almost entirely bulk; the long tail is
 the reverse. That is why it complements them rather than competes with them.
 
 ### 5.2 Side by side, same code
@@ -487,7 +493,7 @@ Every column below was measured by the same scan. OMat24 and sAlex are their pub
 splits (random samples of the training sets); MP and Alexandria are relaxed structures without
 forces.
 
-| | long tail | Zenodo | NOMAD [LT] | Materials Cloud | MPtrj | OMat24 val | sAlex val | MP | Alexandria PBE |
+| | long tail | Zenodo | NOMAD [individual] | Materials Cloud | MPtrj | OMat24 val | sAlex val | MP | Alexandria PBE |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | frames | 30,877,236 | 18,243,690 | 10,087,877 | 2,545,669 | 1,580,395 | 1,025,361 | 553,218 | 154,718 | 5,777,914 |
 | calcs / trajectories | 1,332,136 | 386,425 | 869,960 | 75,751 | 454,594 | 556,347 | 343,645 | — | — |
@@ -530,16 +536,16 @@ Against MPtrj, 65.7% of calcs and 82.5% of frames have a formula MPtrj lacks.
 Where the absent chemical systems come from:
 
 * **Materials Cloud** contributes 18,460 of them, ≈13.5k from HEA25 alone.
-* **NOMAD[long-tail]** contributes 7,729.
+* **NOMAD[individual]** contributes 7,729.
 * **Zenodo** contributes 662: few systems, but they carry 13.9% of Zenodo's frames and occur in
   23% of its deposits.
 
-Compounds of the seven elements no reference has occur in NOMAD[long-tail] and Materials Cloud
+Compounds of the seven elements no reference has occur in NOMAD[individual] and Materials Cloud
 (At only in Materials Cloud).
 
 ### 5.4 How to read the comparison
 
-* **Use MP ∪ Alexandria to bound what the full megasets cover.** OMat24 and sAlex enter as
+* **Use MP ∪ Alexandria to bound what the full training sets cover.** OMat24 and sAlex enter as
   validation splits (1% / 5% random samples), so their element / system / formula counts are lower
   bounds of the full sets. OMat24 and sAlex are both drawn from Alexandria; MPtrj ⊂ MP.
 * **OMat24's prototypes carry no information.** 95% of its bulk cells are P1 after rattling, so
@@ -577,7 +583,7 @@ claim parity with far larger sets. Lead with coverage and novelty, not with 73M 
 | # | evaluation | what it shows | cost | tools |
 |---|---|---|---|---|
 | 1 | **Label-quality audit + consistent subsets** (done in part by `dataset_stats`): SCF tags, \|F−E0\|, extreme labels, **net-force drift \|ΣF\|** (a recognised DFT-error symptom, Kuryla et al. 2025), NEB/nscf/MLFF flags, buckets, MP-compatible subset; a tight-settings recompute of a few hundred stratified frames | that the labels are trustworthy, and which subset is MP-consistent | CPU-hours (+ ~10³–10⁴ core-h DFT for the recompute) | this repo |
-| 2 | **Coverage / novelty vs the megasets** (done: §5.3) + **QUESTS** information entropy (Schwalbe-Koda et al., *Nat. Commun.* 2025): dataset entropy H, diversity, and **differential entropy δH of the long tail relative to MPtrj / OMat24** (δH > 0 = environments the reference lacks) | "long-tail value" without training | CPU-hours on a stratified sample | `pip install quests` (BSD-3) |
+| 2 | **Coverage / novelty vs the large training sets** (done: §5.3) + **QUESTS** information entropy (Schwalbe-Koda et al., *Nat. Commun.* 2025): dataset entropy H, diversity, and **differential entropy δH of the long tail relative to MPtrj / OMat24** (δH > 0 = environments the reference lacks) | "long-tail value" without training | CPU-hours on a stratified sample | `pip install quests` (BSD-3) |
 | 3 | **Zero-shot errors of universal MLIPs** (MACE-MP-0, MACE-OMAT-0 / MPA-0, CHGNet, SevenNet, ORB, UMA) on a stratified sample, by structure class and functional bucket; the **softening scale** (slope of predicted vs DFT forces; Deng et al., *npj Comput. Mater.* 2025) | where state-of-the-art models fail = where this data adds information | inference only (GPU-hours; CPU feasible for ~10⁴ frames) | `mace-torch`, `fairchem`, … |
 | 4 | **Fixed-architecture ablation / fine-tuning**: baseline (e.g. MACE on MPtrj or a foundation model) vs + the MP-compatible long-tail subset vs + a random same-size subset; held out **by deposit**; scored on Matbench Discovery plus application tests | the gold standard: does the data improve models | GPU-days | MACE, MatterTune |
 | 5 | **Application benchmarks that reward long-tail data**: surfaces / adsorbates (OC20/OC22, CatBench, surface-energy benchmarks, Focassio et al.), point defects, AIMD stability (Matbench Discovery's MD task, MLIP Arena), NEB barriers, phonons (MDR), amorphous; experiment-grounded UniFFBench | improvement where megasets are weak | inference + existing references | MLIP Arena, LAMBench, CHIPS-FF |

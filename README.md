@@ -1,157 +1,275 @@
-# zenodo_harvest
+# Published VASP data for MLIP training
 
-Harvest openly-licensed DFT (VASP) calculation data from Zenodo and assemble it
-into a compact, provenance-rich dataset for training a machine-learning
-interatomic potential (MLIP). See [`docs/DESIGN.md`](docs/DESIGN.md) for the data
-model, storage format, and coverage/quality strategy, and [`CLAUDE.md`](CLAUDE.md)
-for domain conventions.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+
+Code and analysis for collecting the VASP calculations that research groups publish in open data
+repositories (Zenodo, NOMAD and the Materials Cloud Archive) and turning them into one consistent,
+documented training dataset for machine-learning interatomic potentials (MLIPs).
+
+This repository is the outcome of a summer research project (July–October 2026) supervised by
+Dr Seán Kavanagh.
+
+## Why this data
+
+MLIPs learn how atoms interact from DFT calculations. The widely used training sets (MPtrj,
+OMat24, sAlex) come from a few large high-throughput databases. They contain almost only bulk
+crystals, each computed with one set of settings. At the same time, hundreds of research groups
+publish the raw output of their own VASP calculations alongside their papers: surfaces and
+interfaces, molecules, defects, and molecular dynamics at finite temperature. This data is
+scattered across repositories, packed inside archives and rarely reused. This project finds it,
+extracts the energy, forces and stress of every ionic step, and keeps the full settings and the
+source of every calculation.
+
+## Results at a glance
+
+All three harvests are complete, and each passes an exact integrity check: every stored frame
+matches its metadata record. Numbers as of October 2026.
+
+| Source | Records | Calculations | Frames (ionic steps) |
+|---|---:|---:|---:|
+| Zenodo | 629 | 386,425 | 18,243,690 |
+| Materials Cloud Archive | 102 | 75,751 | 2,545,669 |
+| NOMAD, individual uploads | 1,976 uploads | 869,960 | 10,087,877 |
+| **Published by individual research groups** | **2,707** | **1,332,136** | **30,877,236** |
+| NOMAD, Alexandria database runs ¹ | 1,719 uploads | 6,203,632 | 42,371,188 |
+
+¹ Most NOMAD calculations turned out to be the Alexandria database's own high-throughput runs,
+uploaded as ordinary NOMAD uploads. Alexandria already feeds sAlex and OMat24, so these runs are
+kept separate and left out of the analysis below.
+
+The data published by individual groups was compared, with the same code, against MPtrj, OMat24,
+sAlex, the Materials Project and Alexandria ([full evaluation](docs/DATASET_EVALUATION.md)):
+
+- **Size.** 30.9M frames with 3.41 billion per-atom forces, from more than 700 first authors.
+  After sAlex's subsampling rule (keep a frame only if its energy changed by more than
+  10 meV/atom), 2.67M frames remain: 3.8 times MPtrj under the same rule.
+- **Different structures.** 35% of frames are bulk crystals, 52% slabs or 2D systems and 12%
+  molecules or clusters. Every reference set is at least 97.7% bulk.
+- **Different calculations.** 38% of frames come from ab initio molecular dynamics and 54% from
+  relaxations. Half of the frames use something other than plain PBE: RPBE, PBEsol, dispersion
+  corrections, hybrids, r2SCAN or +U.
+- **New chemistry.** 26,771 of the 55,189 chemical systems, holding 12.9% of the frames, occur in
+  neither the Materials Project nor Alexandria.
+- **Quality.** 96.2% of frames pass the default quality filters. 5.49M frames use exactly the
+  Materials Project settings, so they can be combined with MPtrj directly.
+- **Finding hidden data.** Zenodo's search sees only the text of a record, not the files inside
+  its archives. A census of all 583,930 Zenodo records that hold archives found 317 VASP records
+  that keyword search had missed, which more than doubled the Zenodo calculations
+  ([details](docs/ZENODO_CENSUS.md)).
+
+## How it works
+
+The pipeline runs in five resumable stages, which pass work to each other through JSONL
+manifests:
+
+| Stage | What it does |
+|---|---|
+| discover | Find candidate records: keyword search or a full census on Zenodo, an indexed query on NOMAD, a complete listing of the Materials Cloud Archive. |
+| triage | Read each record's file list and, through HTTP range requests, the directory of each remote zip file, to confirm VASP outputs without downloading them. |
+| fetch | Download only the VASP files: pull single files out of remote zips, extract VASP files from other archives (nested ones included), verify checksums and resume broken transfers. |
+| parse | Read each calculation with pymatgen (`vasprun.xml`, `vaspout.h5`) or ASE (`OUTCAR`): one frame per ionic step with energy, forces, stress, SCF convergence, net magnetic moment and net charge. |
+| store | Write compressed extxyz files and one metadata record per calculation, then check that the two match exactly. |
+
+A few design choices made the full harvests possible:
+
+- **It fits a fixed quota.** CSD3's scratch space allows 1 TB and 1 million files. The fetch
+  stage counts every byte and every file as it is written and pauses when a budget is reached.
+  The parse stage then turns the staged files into frames and frees the space. Several terabytes
+  of archives passed through this way.
+- **It survives job time limits.** Jobs end after 12–36 h, so every stage resumes where it
+  stopped, and long runs resubmit themselves.
+- **Nothing is dropped silently.** Every rejected record, file and calculation is logged with a
+  reason.
+- **All sources share one format.** The NOMAD and Materials Cloud adapters reuse the fetch, parse
+  and store stages of the Zenodo pipeline.
+
+## Data format
+
+Each source becomes a directory of `shard-NNNNN.extxyz.gz` files (about 10,000 frames each) and
+one `metadata.jsonl`, joined by `calc_id` and `frame_id`.
+
+Per frame, in ASE's `atoms.info` and `atoms.arrays`:
+
+| Key | Content |
+|---|---|
+| `REF_energy` | total energy extrapolated to σ → 0 (eV) |
+| `REF_forces` | force on every atom (eV/Å) |
+| `REF_stress` | stress in ASE's Voigt order and sign (eV/Å³), where VASP computed it |
+| `E_free` | free energy F, the energy consistent with the forces (eV) |
+| `electronic_converged`, `scf_dE` | whether this step's SCF loop converged, and its last energy change |
+| `total_magnetization`, `total_charge` | net magnetic moment (μB) and net charge (e) of the cell |
+| `calc_id`, `frame_id`, `ionic_step` | links to the calculation's metadata record |
+
+The `REF_*` names are MACE's default keys, so the files can be used for training as they are.
+
+Per calculation, `metadata.jsonl` records the source (repository, record ID, DOI, licence,
+citation, file path), the full settings (INCAR as written and as resolved by VASP, k-points,
+POTCARs and a hash of the POTCAR set, functional), quality flags (SCF and ionic convergence, frame
+counts), and which heavy outputs exist at the source but are not stored (charge density, DOS,
+eigenvalues, wavefunctions).
+
+```python
+from ase.io import read
+
+frames = read("shard-00000.extxyz.gz", index=":")
+energy = frames[0].info["REF_energy"]    # eV
+forces = frames[0].arrays["REF_forces"]  # eV/Å, shape (n_atoms, 3)
+```
+
+## Installation
+
+Python 3.10 or newer.
+
+```bash
+git clone https://github.com/yuxie432/open-vasp-harvest.git
+cd open-vasp-harvest
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[parse,archives]"   # pymatgen, ASE, h5py; .7z, .rar and .zst archives
+pip install -e ".[dev]"              # optional: pytest, mypy, ruff
+```
+
+- `.rar` files also need an `unrar` or `bsdtar` binary on `PATH`.
+- For Zenodo, put a personal access token in an untracked `.env` file as `ZENODO_TOKEN=…`. It
+  raises the search page size from 25 to 100. NOMAD and the Materials Cloud Archive need no token.
+- The statistics of the reference sets (`python -m dataset_stats.cli ref-fetch`) also need
+  `pip install ase-db-backends`.
+- Every tool runs from the repository root as `python -m <package>.cli`, and each command
+  explains its options with `--help`.
+
+## Quick start
+
+A small trial on Zenodo:
+
+```bash
+python -m zenodo_harvest.cli discover --query VASP --query OUTCAR --max-records 200 \
+    --out data/manifests/candidates.jsonl
+python -m zenodo_harvest.cli triage --in data/manifests/candidates.jsonl \
+    --out data/manifests/keep.jsonl --min-rank 3
+python -m zenodo_harvest.cli fetch --in data/manifests/keep.jsonl --max-bytes 500000000 --workers 4
+python -m zenodo_harvest.cli parse --in data/manifests/fetched.jsonl
+python -m zenodo_harvest.cli verify --dataset-dir data/dataset
+```
+
+Everything is written under `data/` (gitignored), or under `$ZENODO_HARVEST_DATA` if it is set.
+
+## Full harvests on CSD3
+
+The full harvests ran as SLURM jobs on CSD3. Each part has its own job scripts and runbook:
+
+| Directory | Contents |
+|---|---|
+| [`scripts/csd3/`](scripts/csd3/README.md) | Zenodo harvest and recovery jobs, and the cluster limits they are built around |
+| [`scripts/csd3/census/`](scripts/csd3/census/README.md) | Zenodo census: census, scoring, triage and recovery |
+| [`scripts/csd3/nomad/`](scripts/csd3/nomad/README.md) | NOMAD harvest |
+| [`scripts/csd3/materials_cloud/`](scripts/csd3/materials_cloud/README.md) | Materials Cloud harvest |
+| [`scripts/csd3/stats/`](scripts/csd3/stats/README.md) | dataset statistics and comparison with the reference sets |
+| [`scripts/csd3/test/`](scripts/csd3/test/README.md) | smoke tests of every stage and every safety limit |
+
+On the cluster, fetch, parse and store run as one overlapped command: batch *i + 1* downloads
+while batch *i* is parsed and its staged files are removed.
+
+```bash
+python -m zenodo_harvest.cli pipeline --in data/manifests/keep.jsonl \
+    --parts 40 --workers 4 --max-bytes 0 --max-member-bytes 30000000000 \
+    --max-disk-bytes 800000000000 --max-disk-files 800000 --max-primary-bytes 2000000000
+```
+
+| Option | Meaning |
+|---|---|
+| `--max-bytes` | skip any single download larger than this; `0` means no limit (the production setting) |
+| `--max-member-bytes` | largest file extracted from an archive, a guard against decompression bombs |
+| `--max-disk-bytes`, `--max-disk-files` | staging budget in bytes and in files plus directories, charged as data is written |
+| `--max-primary-bytes` | largest `vasprun.xml` or `OUTCAR` to parse; pymatgen needs about 10 times the file size in RAM |
+| `--workers`, `--parse-workers` | number of parallel downloads and parallel parses |
+| `--no-zip-stream` | download whole zip files instead of pulling single files out of them |
+
+How the staging budget is enforced (details in [`docs/DESIGN.md`](docs/DESIGN.md) §6):
+
+- **Charge before writing.** Every chunk of about 1 MB, and every new file or directory, is charged
+  before it is written and refunded when it is deleted. Nothing is predicted from an archive's
+  declared size or compression ratio, so staging stays within the budget whatever an archive
+  expands to.
+- **Pause and resume.** A record that would cross the budget is rolled back whole and the fetch
+  stops. The pipeline parses and removes what is staged, then fetches the same batch again. A
+  record too large for the whole budget is reported instead of being retried forever.
+- **Survive a full disk.** If the filesystem itself fills up (`ENOSPC`, `EDQUOT`), the affected
+  records count as a temporary failure and the next run retries them. They are never recorded as
+  holding no VASP data.
+
+Filling the budget to about 98% is normal, because safety comes from the check before each write,
+not from spare space. Each run reports its peak usage (`peak_staged_bytes`, `peak_staged_files`).
+In 570 randomised end-to-end tests (different compression ratios, wrong declared sizes, 1–4
+workers, both limits) the staging area never went over its budget.
 
 ## Repository layout
 
 ```
-zenodo_harvest/     the importable package (the pipeline itself)
-nomad_harvest/      second source adapter: NOMAD (reuses zenodo_harvest stages 3-5)
-materials_cloud_harvest/  third source adapter: Materials Cloud Archive (reuses fetch + 3-5)
-dataset_stats/      dataset statistics + comparison with the reference MLIP sets
-                    (docs/DATASET_EVALUATION.md)
-zenodo_census/      Zenodo census: finds the VASP records keyword discovery misses and writes
-                    an ordinary Zenodo keep-list (docs/ZENODO_CENSUS.md)
-tests/              offline pytest suite — top level by convention: pytest's rootdir
-                    discovery expects it there, and it is deliberately NOT packaged
-                    (pyproject ships only `zenodo_harvest`)
-docs/               long-form documents: DESIGN.md (data model + storage design),
-                    survey-findings.md (the measured "how much is on Zenodo?" study)
-scripts/csd3/       CSD3 sbatch job templates + their runbook
-scripts/estimate/   one-off measurement tools for the survey + their runbook
+zenodo_harvest/           core pipeline: discover, triage, fetch, parse, store, verify (Zenodo)
+nomad_harvest/            NOMAD adapter (discover and fetch; reuses parse and store)
+materials_cloud_harvest/  Materials Cloud Archive adapter
+zenodo_census/            census of every archive-bearing Zenodo record, to find the VASP data
+                          keyword search misses
+dataset_stats/            statistics of the datasets and of the reference training sets
+scripts/csd3/             SLURM job scripts and runbooks for CSD3
+scripts/estimate/         measurement tools from the initial survey
+tests/                    offline test suite
+docs/                     design notes, results and evaluation
+CLAUDE.md                 detailed code map and conventions, kept as guidance for AI coding
+                          assistants (each package has its own)
 ```
 
-`scripts/` groups non-package executables by purpose; each subdirectory keeps its own
-`README.md` runbook next to the code it drives, while findings and design live in `docs/`.
+## Documentation
 
-## Pipeline
-
-```
-stage 0  discover  keyword search          -> candidate manifest (JSONL)  [done]
-stage 1  triage    file-listing + zip-peek -> keep-list (JSONL)           [done]
-stage 2  fetch     download (or ZIP-Range-target) + extract VASP files    [done]
-stage 3  parse     pymatgen Vasprun/Vaspout / ASE OUTCAR -> frames        [done]
-stage 4  store     sharded extxyz.gz + JSONL metadata store               [done]
-```
-
-Stages 2–4 also run as one overlapped, disk-paced command — `pipeline` — which splits
-the keep-list into batches and runs `fetch` for batch *i+1* concurrently with
-`parse`+`purge-raw` for batch *i*, so the network is never idle during parsing:
-
-```
-python -m zenodo_harvest.cli pipeline --in data/manifests/keep.jsonl \
-    --parts 40 --workers 4 --max-bytes 0 --max-member-bytes 30000000000 \
-    --max-disk-bytes 800000000000 --max-disk-files 800000 \
-    --max-primary-bytes 4000000000
-```
-
-For cluster-scale parallel parsing there are four dataset-management subcommands:
-`split` a manifest into N parts (one per array task), `merge-datasets` the per-task
-dataset dirs into one, `verify` the merged metadata↔shard integrity + coverage
-stats, and `purge-raw` the raw archives once their calcs are parsed.
-
-Ready-to-edit CSD3 batch templates (with the cluster's wallclock/quota constraints
-written down) live in [`scripts/csd3/`](scripts/csd3/README.md).
-
-## Size, disk and memory controls
-
-The harvest is much bigger than any one node's scratch (measured: ~2 TB of raw
-archives for ~15–75 GB of final dataset), so fetch is paced rather than capped:
-
-| Flag | Meaning |
+| Document | Contents |
 |---|---|
-| `--max-bytes` | skip any single file/archive larger than this; **`0` = uncapped** (the production setting — the transfer/storage lever is the disk valve, not a per-file cap) |
-| `--max-member-bytes` | cap on each *extracted* file (decompression-bomb guard; default 20 GB). Keep it generous so long-AIMD `vasprun.xml`/`OUTCAR` — the frame-richest data — are not skipped. Bounds only the whole-download + tar/rar/7z paths; targeted ZIP members are always wanted VASP files, bounded solely by the disk valve |
-| `--no-zip-stream` / `--zip-stream-max-files` | targeted ZIP fetch (ON by default) pulls only the VASP files out of a `.zip` over HTTP Range — skipping heavy CHGCAR/WAVECAR bulk and never staging the archive — falling back to a whole download when a zip is not addressable this way. `--no-zip-stream` disables it; `--zip-stream-max-files` (default 128) bounds the per-archive request count |
-| `--max-disk-bytes` | **disk budget** for the whole raw staging dir. Enforced on actual bytes as they are written (see below), so it is a hard bound |
-| `--max-disk-files` | the same budget for **inodes** — files *and* directories, since CSD3's `/rds` is Lustre and a directory costs an inode too. On CSD3 this is the binding limit: `hpc-work` allows 1 TB *and* 1M files, while measured extracted VASP trees run ~7.6 KiB *median* per file, so 1M inodes can arrive near 0.3 TB |
-| `--max-primary-bytes` | parse-side guard: refuse to *attempt* a `vasprun.xml`/`OUTCAR` bigger than this (`0` = no cap). pymatgen holds a whole trajectory in RAM, so on a batch scheduler one huge output can get the job cgroup-killed |
-| `--workers` | concurrent record downloads in fetch (default 4). The main throughput lever |
+| [DESIGN.md](docs/DESIGN.md) | data model, storage format and pipeline design |
+| [survey-findings.md](docs/survey-findings.md) | initial survey: how much VASP data Zenodo holds |
+| [HARVEST_RESULT.md](docs/HARVEST_RESULT.md), [EVALUATION.md](docs/EVALUATION.md) | Zenodo harvest: result, quality checks and limitations |
+| [ZENODO_CENSUS.md](docs/ZENODO_CENSUS.md) | finding the Zenodo VASP data that keyword search misses |
+| [NOMAD_HARVEST.md](docs/NOMAD_HARVEST.md), [NOMAD_HARVEST_RESULT.md](docs/NOMAD_HARVEST_RESULT.md) | NOMAD: design and result |
+| [MATERIALS_CLOUD_HARVEST.md](docs/MATERIALS_CLOUD_HARVEST.md), [MATERIALS_CLOUD_HARVEST_RESULT.md](docs/MATERIALS_CLOUD_HARVEST_RESULT.md) | Materials Cloud Archive: design and result |
+| [EXTERNAL_DATA_SOURCES.md](docs/EXTERNAL_DATA_SOURCES.md) | other databases considered, and why they were not harvested |
+| [DATASET_EVALUATION.md](docs/DATASET_EVALUATION.md) | statistics, and comparison with MPtrj, OMat24, sAlex, MP and Alexandria |
+| [FURTHER_WORK.md](docs/FURTHER_WORK.md) | next steps |
 
-### How the byte and inode limits are actually enforced
+The result documents are dated working records. Where their numbers differ, the most recent
+document, [DATASET_EVALUATION.md](docs/DATASET_EVALUATION.md), is authoritative.
 
-The hard part is that a download's size tells you almost nothing about how much disk it
-will occupy: extracted VASP output is text, and measured expansion on real Zenodo records
-ranged from **~1×** (already-compressed payloads) to **4.1×** (a 3.86 GB zip staging 15.9 GB
-of `vasprun.xml`) — and a synthetic archive reached 880×. So nothing is predicted from a
-ratio. Three layers:
-
-1. **Prevent** — every byte and every inode is *charged in the ~1 MB chunk before it is
-   written*, and refunded when deleted (an archive is refunded as soon as its VASP members
-   are extracted, since its bytes are transient). A write that would breach a limit does not
-   happen. Crucially the charge comes from **bytes as they land, never from a declared
-   size** — not an archive header, not the Zenodo manifest, not `Content-Length` — because
-   the production setting is `--max-bytes 0`, so the staging budget is the *only* bound on
-   what reaches disk. `.7z` is the one format that decompresses in a single library call, so
-   there the charge happens inside a writer handed to py7zr (`_BudgetedWriterFactory`).
-   The invariant `staged ≤ limit` therefore holds for any compression ratio and any single
-   file size, with no tuning constant and nothing taken on trust.
-2. **Mitigate** — when a limit is reached, the record being staged is **rolled back whole**
-   (a record is staged completely or not at all, so nothing partial is ever recorded as
-   done) and fetch stops *cleanly and resumably*. `pipeline` then runs `parse` +
-   `purge-raw` to turn staged files into dataset frames and reclaim the space, and
-   **re-fetches the same batch**. That loop is what lets a ~2 TB harvest run inside a
-   fixed quota. Two things keep the loop from spinning:
-   - A refusal is classified by the **record's own footprint**, not by what happens to be
-     staged beside it: if the record alone (including its transient archive-plus-extracted
-     peak) exceeds the limit, no purge could ever help, so it is staged as far as it fits
-     and reported (`record_exceeds_disk_budget`) instead of being retried for ever. This
-     verdict is deterministic under `--workers N`, where a record almost never begins
-     against an empty budget.
-   - If a whole *parallel* pass stages nothing because concurrent records filled the budget
-     between them, the run retries **serially** rather than handing back a stall.
-   Anything an unrecorded record left behind is deleted and refunded on the spot —
-   `purge-raw` only reclaims trees that reached the dataset, so a leftover would hold budget
-   for the rest of the harvest.
-3. **Survive** — if the real filesystem quota is hit anyway, the `ENOSPC`/`EDQUOT` write
-   error is treated as **transient**, so those records are retried by a later run rather
-   than being recorded as "contains no VASP" and skipped forever. The same applies to a
-   record the budget refused: a space refusal never yields a terminal verdict, so raising
-   the budget is always enough to collect it.
-
-Every run reports its own `peak_staged_bytes`/`peak_staged_files`, so staying inside the
-limits is verifiable from the summary rather than by watching from outside. Filling the
-budget to ~98% is the *intended* outcome — safety comes from the check before each write,
-not from leaving slack. Validated by 570 randomised end-to-end cases (compression ratios,
-declared sizes wrong in both directions, 1–4 workers, both limits): no breach, and the
-tally never drifts from what the filesystem reports.
-
-Downloads are checksum-verified and **resume over HTTP Range**, so a job killed by its
-wallclock does not restart a part-transferred 100 GB archive from byte 0.
-
-## Quick start (WSL trial)
+## Tests
 
 ```bash
-pip install -r requirements.txt          # stage 0-1 need only `requests`
-
-python -m zenodo_harvest.cli discover \
-    --query VASP --query OUTCAR --max-records 200 \
-    --out data/manifests/candidates.jsonl
-
-python -m zenodo_harvest.cli triage \
-    --in data/manifests/candidates.jsonl \
-    --out data/manifests/keep.jsonl --min-rank 3      # peek is ON by default (--no-peek disables)
-
-pip install -e .[parse]                  # stage 2-4 add pymatgen + ase
-
-python -m zenodo_harvest.cli fetch \
-    --in data/manifests/keep.jsonl --max-bytes 500000000 --workers 4
-
-python -m zenodo_harvest.cli parse \
-    --in data/manifests/fetched.jsonl    # -> data/dataset/{shard-*.extxyz.gz,metadata.jsonl}
-
-python -m zenodo_harvest.cli verify \
-    --dataset-dir data/dataset           # integrity bijection + dataset stats
+python -m pytest tests/ -q       # 702 offline tests, about 30 s, no network needed
+python -m mypy zenodo_harvest/   # type check
+ruff check zenodo_harvest/       # lint
 ```
 
-Each parsed ionic step becomes one extxyz frame with energy/forces/stress under MACE's
-default **`REF_energy`/`REF_forces`/`REF_stress`** keys (train with those keys directly;
-stress is Voigt-6 eV/Å³ in ASE's convention). Only openly-reusable licenses are kept by
-default (`--no-license-gate` to disable). Set `ZENODO_TOKEN` to raise the rate limit.
-Install `pip install -e .[archives]` to also harvest `.rar`/`.7z` uploads (rarfile also
-needs an `unrar`/`bsdtar` binary). For a full harvest on the cluster, add `--exhaustive`
-to `discover` (recursive date-partitioning past Zenodo's 10k search window).
+## Status
+
+- **Done:** the Zenodo harvest (keyword search plus the census), the NOMAD and Materials Cloud
+  harvests, and the comparison with the reference training sets.
+- **Not done:** merging the three datasets into one cleaned dataset (removing duplicates,
+  improving the energy filters, grouping by functional and POTCAR set), and measuring the value of
+  the data for MLIP training, for example by fine-tuning MACE with and without it. Both are
+  planned in [FURTHER_WORK.md](docs/FURTHER_WORK.md) and in §7 of
+  [DATASET_EVALUATION.md](docs/DATASET_EVALUATION.md).
+- The datasets themselves (about 140 GiB of compressed extxyz files) are stored on CSD3. They are
+  not part of this repository and have not been released publicly.
+
+## Licence
+
+The code and documentation in this repository are released under the [MIT Licence](LICENSE).
+
+The harvested data are not covered by this licence. Every calculation keeps the licence of the
+record it came from, stored in its metadata. By frames, Zenodo is 97.8% CC-BY-4.0, NOMAD is 100%
+CC-BY-4.0, and the Materials Cloud Archive is 65.6% CC-BY-SA-4.0, 26.6% CC-BY-4.0 and 7.8% MIT. A
+few records are CC-BY-NC, and one Zenodo record without a stated licence (`10579527`) was added at
+the supervisor's direction. Anyone who redistributes the data must credit the original depositors
+and respect share-alike and non-commercial terms where they apply.
+
+## Acknowledgements
+
+Supervised by Dr Seán Kavanagh. The data were published by the researchers who deposited them on
+Zenodo, NOMAD and the Materials Cloud Archive; every calculation keeps a link to its source.
+Computations used the Cambridge Service for Data Driven Discovery (CSD3), operated by the
+University of Cambridge Research Computing Service.

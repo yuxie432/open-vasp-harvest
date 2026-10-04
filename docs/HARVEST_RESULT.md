@@ -147,7 +147,8 @@ easy, high-gain fix, which is why the stage is closed here.
 - **Multi-code parsing** — add Quantum ESPRESSO / CP2K / CASTEP / FHI-aims readers to widen beyond VASP.
 - **Author/ORCID- or community-seeded discovery** — effective but manual (last resort).
 - **Systematic completeness comes from elsewhere** — NOMAD (done, 7.1 M) + Materials Project (mp-api,
-  planned) are the structured corpora without this blind spot; Zenodo is deliberately the long tail.
+  planned) are the structured corpora without this blind spot; Zenodo is deliberately the long tail (many small deposits from
+  individual groups).
 
 ## Yield vs. the pre-run estimate
 

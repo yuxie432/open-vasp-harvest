@@ -232,7 +232,10 @@ than energies). Per-source energy references (e.g. MC is 91% OUTCAR-parsed) stay
 
 ## C. Show the long tail is valuable (the scientific "so what")
 
-1. **Uniqueness vs the megasets.** Compare the curated corpus against MPtrj / OMat24 / Alexandria /
+The *long tail* is the data published by individual research groups (the three harvested
+sources), as opposed to the large institutional training sets (MPtrj, OMat24, sAlex/Alexandria).
+
+1. **Uniqueness vs the large training sets.** Compare the curated corpus against MPtrj / OMat24 / Alexandria /
    MatPES (comparison only). Measure coverage of compositions/elements, structure hashes (e.g. a
    pymatgen `StructureMatcher` / composition + space-group key), distance from equilibrium
    (force/stress distributions), surfaces/interfaces/defects/AIMD regimes, and functionals. Output:
@@ -240,7 +243,7 @@ than energies). Per-source energy references (e.g. MC is 91% OUTCAR-parsed) stay
 2. **Subsampling.** Frame count ≫ diversity: AIMD/relaxation trajectories are highly correlated (one MC
    record = 65.6% of MC frames; one Zenodo record = ~47% of early Zenodo frames). Subsample per
    trajectory (stride / farthest-point on descriptors) before training.
-3. **MLIP ablation (MACE)**: a baseline trained on a megaset versus baseline + long-tail (one
+3. **MLIP ablation (MACE)**: a baseline trained on a large training set (e.g. MPtrj) versus baseline + long-tail data (one
    consistent bucket, e.g. PBE / PBE+U), evaluated on held-out long-tail systems and standard
    benchmarks. There is **no training code in the repo yet**. It needs a CSD3 GPU allocation
    (`ampere` A100 partition, an `-SL3-GPU` account — confirm with the user) and MACE's `REF_*` keys

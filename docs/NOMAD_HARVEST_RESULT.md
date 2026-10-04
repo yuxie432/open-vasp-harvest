@@ -20,7 +20,7 @@ entry mainfile), deduplicated against the Zenodo dataset.
 
 Parser split: **pymatgen.Vasprun 49,153,673 frames**, **ase.OUTCAR 3,305,392 frames**.
 Functional coverage (frames): PBE 34.9M, PBEsol 10.1M, GGA 6.5M, SCAN 0.5M, HSE06 76k, ML 0.24M,
-plus the vdW/+U/meta-GGA long tail. Electronic convergence: 7,041,518 calcs converged /
+plus smaller numbers of vdW, +U and meta-GGA frames. Electronic convergence: 7,041,518 calcs converged /
 32,073 unconverged (542,135 individual frames SCF-unconverged, tagged per-frame). Full
 periodic-table element coverage (O 10.5M, H 6.8M, S 4.2M, … down to Fr/Ra/Cm at ≤1.6k frames).
 

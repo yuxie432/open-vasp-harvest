@@ -500,7 +500,7 @@ has its own `CLAUDE.md` with the details:
   (found 2026-10-03, `docs/DATASET_EVALUATION.md`)**: 6.20M of those calcs / 42.4M of 52.5M frames
   are the Alexandria database's own runs (paths carry Alexandria ids `agm…`, uploaded 2024 by its
   authors) plus the same group's 2017 perovskite set, i.e. institutional data already in
-  Alexandria / sAlex / OMat24. NOMAD's genuine long tail is ~870k calcs / 10.1M frames;
+  Alexandria / sAlex / OMat24. NOMAD's individual uploads are ~870k calcs / 10.1M frames;
   `dataset_stats.meta.origin_of` separates them.
 - `materials_cloud_harvest/` — Materials Cloud Archive: full census of all ~1.2k records, zip +
   AiiDA-archive peeks (sqlite_zip ones through their `db.sqlite3`), archives no peek can settle
@@ -543,7 +543,7 @@ Not a source but the evaluation of all three, with its own `CLAUDE.md`:
   quality, availability, provenance, Alexandria-origin flag), a resumable per-shard scan (per-frame
   energy / force / stress / hash rows, per-calc composition, vacuum-gap dimensionality, space group),
   and a report with side-by-side and novelty tables (`docs/DATASET_EVALUATION.md`; CSD3 runbook
-  `scripts/csd3/stats/`). **Evaluation DONE 2026-10-03** (individual uploads only): long tail
+  `scripts/csd3/stats/`). **Evaluation DONE 2026-10-03** (individual uploads only):
   2,707 deposits / 1.33M calcs / 30.9M frames; 2.67M frames after sAlex's ΔE > 10 meV/atom rule
   (3.8× MPtrj under the same rule); 52% of frames slab / 2D and 12% molecule / cluster, while every
   reference is ≥ 97.7% bulk; 49% of its chemical systems are absent from MP ∪ Alexandria; 96.2% of

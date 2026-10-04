@@ -18,7 +18,7 @@ next building phase (another agent may implement from it).
 
 | Source | records / calcs | frames | notes |
 |---|---|---|---|
-| **Zenodo** | ~303 records / 182,111 calcs | 12,088,722 | long tail, individual deposits, raw VASP re-parsed |
+| **Zenodo** | ~303 records / 182,111 calcs | 12,088,722 | individual deposits, raw VASP re-parsed |
 | **NOMAD** (direct uploads) | 7,073,592 calcs | 52,459,065 | individual uploads, VASP-only, raw re-parsed |
 
 Both are stored in the shared schema (`extxyz.gz` + `metadata.jsonl`, MACE keys
@@ -52,7 +52,7 @@ institution-mass-calculated databases, (c) easily-accessible sets already used f
   Discovery value ≈ 0, and they ship *processed* labels (no per-calc INCAR/POTCAR), so re-parse
   value ≈ 0 too. **"Buy, don't build."** They are self-sufficient standalone training sets
   (MPtrj-only is the Matbench "compliant" tier; OMat24 is SOTA); the Zenodo+NOMAD aggregation is
-  the **complementary long tail**, not the backbone.
+  the **complementary long tail** (many small deposits from individual groups), not the backbone.
 
 ---
 
@@ -122,11 +122,11 @@ version-DOI doubling. Refined by inspecting records/files/creators/related-ident
 | **ColabFit Exchange** | 504 datasets | — | — | **MLIP-purpose, manually curated** (hand-picks some Zenodo/figshare) | — | — | — | the "already-packaged" map — diff against it |
 
 **Findings.** (i) There is **no second Zenodo/NOMAD-scale source.** The remaining individual-researcher
-raw-VASP long tail is scattered across ~6 repos (~a few hundred VASP-metadata records total → ~100–250
+raw VASP data is scattered across ~6 repos (~a few hundred VASP-metadata records total → ~100–250
 likely-yielding). (ii) **DataCite REST API is a single unifying discovery layer** across all of them
 (Mendeley/Dryad/ScienceDB/DaRUS/figshare/OSF/Zenodo all mint DataCite DOIs — verified). A DataCite
 census showed **135 of 200 OUTCAR-mentioning DOIs are already-harvested Zenodo**, the rest a thin
-scatter. (iii) The niche of a *systematic* raw-provenance long-tail sweep is **largely open** —
+scatter. (iii) The niche of a *systematic* sweep of individual researchers' raw data is **largely open** —
 ColabFit is the only partial occupant and it curates by hand. (iv) Deposit-level overlap with
 Zenodo/NOMAD is ~nil (distinct DOI namespaces); precise physics-level dedup is a training-time step.
 
@@ -305,7 +305,7 @@ domain — molecular MLIPs like OMol25, out of scope for a periodic-materials ML
 - **CMR / C2DB (DTU)** = GPAW, processed ASE-db, institutional, and — decisively — **property-screening,
   not force/trajectory data** (final relaxed structures + band gaps/magnetism/optics) → wrong data shape
   for MLIP force labels → out.
-- Individual-researcher QE/CP2K long tail exists in Zenodo/figshare/Materials Cloud Archive but is
+- QE/CP2K data from individual researchers exist in Zenodo/figshare/Materials Cloud Archive but are
   small and scattered (same DataCite-unified discovery applies).
 
 ### 6.3 Code features, MLIP suitability, and cross-code consistency
@@ -393,7 +393,7 @@ Zenodo/Materials-Cloud are invisible to it until its signature set is widened.
 4. **Multi-code (direction #3)** — if scope is widened, **FHI-aims + QE via the existing NOMAD pipeline**
    (~1.6M non-VASP periodic calcs, already API-accessible) is the biggest gain-per-effort; keep each
    code its own reference group. A separate scope decision with the mentor.
-5. **The scientific payoff** is still to *use* the assembled long tail: dedup vs the megasets, quantify
+5. **The scientific payoff** is still to *use* the assembled long tail: dedup vs the large training sets, quantify
    what is unique, and show in a training ablation that it helps (direction #1).
 
 ---

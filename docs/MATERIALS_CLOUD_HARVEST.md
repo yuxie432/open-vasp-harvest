@@ -42,7 +42,7 @@ numbers turned out wrong (see §9).
 | size | 7.3M records | 19M entries | **1,241 records** |
 | discovery | metadata-text search, 30 req/min, 10k window | indexed `program_name=VASP` | **enumerate everything** (500 req/min) |
 | file access | `/files/{key}/content`, Range, no `Accept-Ranges` | pre-packed upload zip, 1 conn/5 s | **302 → presigned CSCS S3** (~60 s expiry), Range |
-| dominant code | VASP-rich long tail | VASP 14.7M | **Quantum ESPRESSO** (MARVEL/EPFL); VASP a minority |
+| dominant code | VASP-rich deposits from individual groups | VASP 14.7M | **Quantum ESPRESSO** (MARVEL/EPFL); VASP a minority |
 | unique feature | — | normalised archive | **AiiDA provenance exports** (`.aiida`, two formats) |
 
 So discovery and triage are MC-specific; the fetch mechanics are Zenodo-like (per-file download,

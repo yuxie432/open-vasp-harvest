@@ -166,7 +166,7 @@ Per-frame layout (ASE `Atoms`, written with `ase.io.write(..., format="extxyz")`
 | stress (if present) | frame info | `REF_stress` (eV/Å³, ASE Voigt; training label) |
 | free energy F (force-consistent) | frame info | `E_free`; vasprun also `entropy_TS` (=E−F) |
 | convergence flags | frame info | `electronic_converged`, `scf_dE` (this frame's OWN ionic step) |
-| **link to metadata** | frame info | `frame_id`, `source_recid` |
+| **link to metadata** | frame info | `frame_id`, `calc_id`, `ionic_step`, `source` |
 
 (Per-atom `dft_charge`/`dft_magmom` are **not** stored — only the per-structure `total_charge` /
 `total_magnetization` above. Net charge is frame-invariant; net moment is the calc's converged value.)

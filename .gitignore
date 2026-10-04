@@ -92,6 +92,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Claude Code's local settings and session files (personal, not part of the project)
+.claude/
+
 # CSD3 harvest artifacts pulled down for offline evaluation (logs, manifests, metadata)
 dataset_csd3/
 manifests_csd3/
