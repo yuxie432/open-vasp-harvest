@@ -1,10 +1,18 @@
 [project]
 name = "zenodo-harvest"
 version = "0.1.0"
-description = "Harvest and triage DFT (VASP) datasets from Zenodo for MLIP training."
+description = "Collect published VASP calculations from Zenodo, NOMAD and the Materials Cloud Archive into a training dataset for machine-learning interatomic potentials."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Yu Xie" }]
+keywords = ["VASP", "DFT", "machine-learning interatomic potentials", "MLIP", "materials science", "open data", "Zenodo", "NOMAD", "Materials Cloud"]
 requires-python = ">=3.10"
 dependencies = ["requests>=2.31"]
+
+[project.urls]
+Repository = "https://github.com/yuxie432/open-vasp-harvest"
+Documentation = "https://github.com/yuxie432/open-vasp-harvest/tree/main/docs"
 
 [project.optional-dependencies]
 # fetch/parse/store; pymatgen 2026.5.4 is the latest PyPI release (core 2026.5.18).
@@ -21,11 +29,11 @@ dev = ["ruff", "mypy", "pytest", "types-requests"]
 zenodo-harvest = "zenodo_harvest.cli:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]  # 77+: SPDX `license` string (PEP 639)
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["zenodo_harvest"]
+packages = ["zenodo_harvest", "nomad_harvest", "materials_cloud_harvest", "zenodo_census", "dataset_stats"]
 
 [tool.ruff]
 line-length = 100
